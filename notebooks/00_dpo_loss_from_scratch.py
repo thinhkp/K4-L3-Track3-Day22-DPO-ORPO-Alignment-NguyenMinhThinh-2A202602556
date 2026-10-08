@@ -59,8 +59,8 @@ print(f"sum log p = {total.item():.3f}   mean log p = {mean.item():.3f}")
 # %%
 def my_dpo_loss(pc, pr, rc, rr, beta=0.1):
     """pc/pr: policy log-prob chosen/rejected; rc/rr: reference. Trả về loss trung bình."""
-    # TODO: viết bằng torch.nn.functional.logsigmoid
-    return None
+    log_ratio_margin = (pc - rc) - (pr - rr)
+    return -torch.nn.functional.logsigmoid(beta * log_ratio_margin).mean()
 
 
 # %%
@@ -102,6 +102,14 @@ for margin in (-2.0, 0.0, 2.0, 5.0):
 # Hai kịch bản đều làm margin tăng 2 nat. Loss giống hệt nhau, nhưng ở kịch
 # bản B log-prob của câu *được chọn* lại giảm. DPO không phân biệt được hai
 # trường hợp này; chỉ đường cong `rewards/chosen` ở NB3 cho bạn biết.
+
+# %% [markdown]
+# **Trả lời — likelihood displacement:** margin là reward(chosen) trừ
+# reward(rejected). Nó vẫn tăng nếu log-xác suất của chosen giảm, miễn là
+# log-xác suất của rejected giảm nhanh hơn. Ví dụ chosen giảm 3 nat còn
+# rejected giảm 5 nat thì margin tăng 2 nat. Loss DPO chỉ tối ưu chênh lệch
+# này, vì vậy riêng margin tăng chưa chứng minh chosen trở nên dễ sinh hơn;
+# cần xem riêng hai đường reward và kiểm tra held-out.
 
 # %%
 ref_c, ref_r = torch.tensor([-20.0]), torch.tensor([-22.0])
